@@ -62,28 +62,28 @@
       const rrspContribution = parseFloat(document.getElementById('rrspContribution').value);
       const province = document.getElementById('province').value;
 
-      // Federal Tax Brackets (as of 2021)
-      const federalBrackets = [0, 49020, 98040, 151978, 216511];
+      // Federal Tax Brackets 
+      const federalBrackets = [50197, 100392, 155625, 221708];
       const federalRates = [0.15, 0.205, 0.26, 0.29, 0.33];
 
-      // Provincial Tax Brackets (as of 2021, simplified example)
+      // Provincial Tax Brackets 
       const provincialBrackets = {
-        "Alberta": [0, 134238, 161086, 214781, 322171],
-        "British Columbia": [0, 43070, 86141, 98901, 120094, 162832, 227091],
-        "Ontario": [0, 46226, 92454, 150000, 220000],
-        "Quebec": [0, 46295, 92580, 112655],
-        "Nova Scotia": [0, 29590, 59180, 93000, 150000],
-        "Manitoba": [0, 34431, 74416],
-        "New Brunswick": [0, 44887, 89775, 145955, 166280],
-        "Newfoundland and Labrador": [0, 39147, 78294, 139780, 195693, 250000, 500000, 1000000],
-        "Northwest Territories": [0, 45462, 90927, 147826],
-        "Nunavut": [0, 47862, 95724, 155625],
-        "Prince Edward Island": [0, 31984, 63969],
-        "Saskatchewan": [0, 46773, 133638],
-        "Yukon": [0, 50197, 100392, 155625, 500000],
+        "Alberta": [134238, 161086, 214781, 322171],
+        "British Columbia": [43070, 86141, 98901, 120094, 162832, 227091],
+        "Ontario": [46226, 92454, 150000, 220000],
+        "Quebec": [46295, 92580, 112655],
+        "Nova Scotia": [29590, 59180, 93000, 150000],
+        "Manitoba": [34431, 74416],
+        "New Brunswick": [44887, 89775, 145955, 166280],
+        "Newfoundland and Labrador": [39147, 78294, 139780, 195693, 250000, 500000, 1000000],
+        "Northwest Territories": [45462, 90927, 147826],
+        "Nunavut": [47862, 95724, 155625],
+        "Prince Edward Island": [31984, 63969],
+        "Saskatchewan": [46773, 133638],
+        "Yukon": [0197, 100392, 155625, 500000],
       };
       
-      // Provincial Tax Rates (as of 2021, simplified example)
+      // Provincial Tax Rates 
       const provincialRates = {
         "Alberta": [0.1, 0.12, 0.13, 0.14, 0.15],
         "British Columbia": [0.0506, 0.077, 0.105, 0.1229, 0.147, 0.168, 0.205],
@@ -100,26 +100,11 @@
         "Yukon": [0.064, 0.09, 0.109, 0.128, 0.15],
       };
 
-      // Find the appropriate tax bracket for the given income
-      function findBracket(income, brackets) {
-        for (let i = 0; i < brackets.length; i++) {
-          if (i === 0 && income <= brackets[i]) {
-            return i;
-          }
-          if (income > brackets[i - 1] && income <= brackets[i]) {
-            return i;
-          }
-        }
-        return brackets.length - 1;
-      }
-
       // Calculate federal tax
       let federalTax = 0;
       let remainingIncome = income;
       for (let i = 0; i < federalBrackets.length; i++) {
-        const taxableIncome = i === 0
-          ? Math.min(remainingIncome, federalBrackets[i])
-          : Math.min(remainingIncome, federalBrackets[i] - federalBrackets[i - 1]);
+        const taxableIncome = Math.min(remainingIncome, federalBrackets[i]);
         federalTax += taxableIncome * federalRates[i];
         remainingIncome -= taxableIncome;
         if (remainingIncome <= 0) {
@@ -133,9 +118,7 @@
       let provincialTax = 0;
       remainingIncome = income;
       for (let i = 0; i < provinceBrackets.length; i++) {
-        const taxableIncome = i === 0
-          ? Math.min(remainingIncome, provinceBrackets[i])
-          : Math.min(remainingIncome, provinceBrackets[i] - provinceBrackets[i - 1]);
+        const taxableIncome = Math.min(remainingIncome, provinceBrackets[i]);
         provincialTax += taxableIncome * provinceTaxRate[i];
         remainingIncome -= taxableIncome;
         if (remainingIncome <= 0) {
@@ -143,14 +126,38 @@
         }
       }
 
-      // Calculate tax savings from RRSP contribution
-      const rrspTaxSavings = rrspContribution * (federalRates[federalRates.length - 1] + provinceTaxRate[provinceTaxRate.length - 1]);
+	  // Calculate after RRSP provincial tax
+      let rrspProvincialTax = 0;
+      remainingIncome = income - rrspContribution;
+      for (let i = 0; i < provinceBrackets.length; i++) {
+        const taxableIncome = Math.min(remainingIncome, provinceBrackets[i]);
+        rrspProvincialTax += taxableIncome * provinceTaxRate[i];
+        remainingIncome -= taxableIncome;
+        if (remainingIncome <= 0) {
+          break;
+        }
+      }
+
+      // Calculate after RRPS federal tax
+      let rrspFederalTax = 0;
+      remainingIncome = income - rrspContribution;
+      for (let i = 0; i < federalBrackets.length; i++) {
+        const taxableIncome = Math.min(remainingIncome, federalBrackets[i]);
+        rrspFederalTax += taxableIncome * federalRates[i];
+        remainingIncome -= taxableIncome;
+        if (remainingIncome <= 0) {
+          break;
+        }
+      }
 
       // Calculate total tax without RRSP contribution
       const totalTaxWithoutRRSP = federalTax + provincialTax;
 
       // Calculate total tax with RRSP contribution
-      const totalTaxWithRRSP = totalTaxWithoutRRSP - rrspTaxSavings;
+      const totalTaxWithRRSP = rrspFederalTax + rrspProvincialTax;
+	  
+	  // Calculate tax savings from RRSP contribution
+      const rrspTaxSavings = totalTaxWithoutRRSP - totalTaxWithRRSP;
 
       // Display results
       const totalTaxWithoutRRSPElement = document.getElementById('totalTaxWithoutRRSP');
